@@ -3,8 +3,7 @@ package lang.sql.datatype;
 import lang.sql.ast.abstable.AbsAggrNode;
 import util.CombinationGenerator;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -44,7 +43,7 @@ public class LazyAggrVal implements Value {
 
     public CombinedVal instantiateToCombinedVal() {
 
-        if (f == AbsAggrNode.AggrMax || f == AbsAggrNode.AggrMin) {
+        if (f == AbsAggrNode.AggrMax || f == AbsAggrNode.AggrMin || f == AbsAggrNode.AggrFirst) {
             return new CombinedVal(components.stream().collect(Collectors.toSet()));
         }
 
@@ -56,6 +55,40 @@ public class LazyAggrVal implements Value {
         if (f == AbsAggrNode.AggrCountDistinct) {
             return new CombinedVal(IntStream.range(0, this.components.stream().collect(Collectors.toSet()).size())
                     .mapToObj(i -> new NumberVal(i)).collect(Collectors.toSet()));
+        }
+
+        if (f == AbsAggrNode.AggrSum || f == AbsAggrNode.AggrAvg) {
+
+            Set<Value> combResult = new HashSet<>();
+
+            Map<Value, Integer> valMultiplicity = new HashMap<>();
+            for (Value v : this.getComponents()) {
+                if (! valMultiplicity.containsKey(v))
+                    valMultiplicity.put(v, 0);
+                valMultiplicity.replace(v, valMultiplicity.get(v) + 1);
+            }
+            Vector<Double> values = new Vector<>();
+            List<Integer> multiplicityBound = new ArrayList<>();
+            for (Map.Entry<Value, Integer> e : valMultiplicity.entrySet()) {
+                if (e.getKey() instanceof NumberVal) {
+                    values.add(((NumberVal) e.getKey()).getVal());
+                    multiplicityBound.add(e.getValue());
+                }
+            }
+            List<Vector<Integer>> allMult = CombinationGenerator.genAllVectorLE(multiplicityBound);
+            for (Vector<Integer> vec : allMult) {
+                Double temp = 0.;
+                for (int i = 0; i < vec.size(); i ++) {
+                    temp += vec.get(i) * values.get(i);
+                }
+                if (f == AbsAggrNode.AggrSum) {
+                    combResult.add(new NumberVal(temp));
+                } else if (f == AbsAggrNode.AggrAvg) {
+                    combResult.add(new NumberVal(temp / vec.stream().reduce((x, y)-> x + y).get()));
+                }
+            }
+
+            return new CombinedVal(combResult);
         }
 
         // this one is dumb

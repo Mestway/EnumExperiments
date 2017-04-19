@@ -14,10 +14,11 @@ jar_path = "out/artifacts/EnumExperiment_jar/EnumExperiment.jar"
 #java -Djava.library.path=lib/ -jar out/artifacts/EnumExperiment_jar/EnumExperiment.jar
 
 def main():
+  print "file, collected, visited, time"
   for root, dirs, filenames in os.walk(test_dir):
     for f in filenames:
       target_file = os.path.join(root, f)
-      print run(target_file, "-a", str(1), str(0))
+      print f, ",",'%s' % ', '.join(map(str, run(target_file, "-a", str(1), str(0))))
 
 def run(target_file, pruning_strategy, max_depth, complex_query_depth):
   try:

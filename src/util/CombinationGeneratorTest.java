@@ -2,11 +2,10 @@ package util;
 
 import org.junit.Test;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 import static org.junit.Assert.*;
+import static util.CombinationGenerator.genAllVectorLE;
 import static util.CombinationGenerator.genCombination;
 
 /**
@@ -21,6 +20,19 @@ public class CombinationGeneratorTest {
             original.add(i);
         }
         List<List<Integer>> l = genCombination(original);
+        DebugHelper.printList(l);
+    }
+
+    @Test
+    public void test2(){
+        List<Integer> original = new ArrayList<>();
+        for (int i = 1; i <= 5; i ++) {
+            original.add(new Random().nextInt(10) + 1);
+        }
+        List<Vector<Integer>> l = genAllVectorLE(original);
+        System.out.println(original);
+        System.out.println(original.stream().reduce((x, y) -> x + y).get());
+        System.out.println(l.size());
         DebugHelper.printList(l);
     }
 

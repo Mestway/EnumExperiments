@@ -21,7 +21,7 @@
 #constraint
 {
 	"constants": [],
-	"aggregation_functions": ["max", "min"]
+	"aggregation_functions": ["max", "min", "sum", "avg"]
 }
 
 #solution

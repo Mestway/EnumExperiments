@@ -3,6 +3,7 @@ package util;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Vector;
 
 /**
  * Created by clwang on 1/7/16.
@@ -45,7 +46,7 @@ public class CombinationGenerator {
 
     public static <T> List<List<T>> genCombination(List<T> list, int n) {
         if (list.size() >= 15)
-            System.out.println("[Warning] Trying to generate large combinations, threat to explode");
+            System.out.println("[Warning] Trying to generate large (" + list.size() + ") combinations, threat to explode");
         List<List<T>> result = new ArrayList<List<T>>();
         List<List<Integer>> indexPerm = genIndexCombination(0, list.size()-1, n);
         for (List<Integer> indices : indexPerm) {
@@ -102,6 +103,27 @@ public class CombinationGenerator {
                 result.add(newList);
             }
         }
+        return result;
+    }
+
+    public static List<Vector<Integer>> genAllVectorLE(List<Integer> bound) {
+        List<Vector<Integer>> result = new ArrayList<>();
+
+        if (bound.size() == 0) {
+            result.add(new Vector<>());
+            return result;
+        }
+
+        List<Vector<Integer>> subListResult = genAllVectorLE(bound.subList(0, bound.size() - 1));
+        Integer lastVal = bound.get(bound.size() - 1);
+        for (int i = 0; i <= lastVal; i ++) {
+            for (Vector<Integer> vec : subListResult) {
+                Vector<Integer> newVec = (Vector<Integer>) vec.clone();
+                newVec.add(i);
+                result.add(newVec);
+            }
+        }
+
         return result;
     }
 

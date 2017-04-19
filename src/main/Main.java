@@ -27,6 +27,9 @@ public class Main {
     @Parameter(names={"--depth", "-d"})
     private int searchDepth = -1;
 
+    @Parameter(names={"--output"})
+    private String outputDir = null;
+
     public static void main(String[] args) {
 
         Main main = new Main();
@@ -37,7 +40,6 @@ public class Main {
         main.run();
 
         //testZ3();
-
     }
 
     public void run() {
