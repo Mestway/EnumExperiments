@@ -41,7 +41,7 @@ def run(target_file, pruning_strategy, max_depth, complex_query_depth):
     return [-1, -1, -1]
 
 if __name__ == '__main__':
-  if (sys.argv[1] != "-a" or sys.argv[1] != "-c"):
+  if (sys.argv[1] != "-a" and sys.argv[1] != "-c"):
     print "Error: Pruning strategy not correctly provided"
   else:
     main(sys.argv[1], sys.argv[2], sys.argv[3])
