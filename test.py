@@ -14,14 +14,14 @@ jar_path = "out/artifacts/EnumExperiment_jar/EnumExperiment.jar"
 
 #java -Djava.library.path=lib/ -jar out/artifacts/EnumExperiment_jar/EnumExperiment.jar
 
-def main(search_depth, complex_query_depth):
+def main(strategy, search_depth, complex_query_depth):
   print "file, collected, visited, time"
   for root, dirs, filenames in os.walk(test_dir):
     for f in filenames:
       if ("X" in f) or ("R" in f):
         continue
       target_file = os.path.join(root, f)
-      print os.path.join(root, f), ",",'%s' % ', '.join(map(str, run(target_file, "-a", search_depth, complex_query_depth)))
+      print os.path.join(root, f), ",",'%s' % ', '.join(map(str, run(target_file, strategy, search_depth, complex_query_depth)))
 
 def run(target_file, pruning_strategy, max_depth, complex_query_depth):
   try:
@@ -41,4 +41,7 @@ def run(target_file, pruning_strategy, max_depth, complex_query_depth):
     return [-1, -1, -1]
 
 if __name__ == '__main__':
-  main(sys.argv[1], sys.argv[2])
+  if (sys.argv[1] != "-a" or sys.argv[1] != "-c"):
+    print "Error: Pruning strategy not correctly provided"
+  else:
+    main(sys.argv[1], sys.argv[2], sys.argv[3])
