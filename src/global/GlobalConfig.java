@@ -23,8 +23,8 @@ public final class GlobalConfig {
     public static final boolean GUESS_ADDITIONAL_CONSTANTS = false;
 
     public static int maxSearchDepth = 3;
-    public static String firstPhasePruningTech = "Approximation";
+    public static PruningApproach firstPhasePruning = PruningApproach.approximation;
     public static int testComplexAggregation = -1;
-//  public static String firstPhasePruningTech = "Constraint";
 
+    public enum PruningApproach { approximation, constraint, nothing }
 }

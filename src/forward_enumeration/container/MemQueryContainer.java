@@ -18,7 +18,7 @@ public class MemQueryContainer implements QueryContainer {
 
     @Override
     public void collectQueries(Collection<AbsTableNode> tns, Function<AbsTableNode, Boolean> f) {
-        this.insertQueries(tns.stream().filter(x -> f.apply(x)).collect(Collectors.toList()));
+        this.insertQueries(tns.stream().filter(f::apply).collect(Collectors.toList()));
     }
 
     @Override
@@ -33,18 +33,21 @@ public class MemQueryContainer implements QueryContainer {
 
     public enum ContainerType { SummaryTableWBV, TableLinks, None }
 
-    ContainerType containerType = ContainerType.None;
+    private ContainerType containerType = ContainerType.None;
     public ContainerType getContainerType() { return this.containerType; }
 
     // store the getRepresentative table of tables with the same content, to ensure that hash lookup will not mess it up
-    private Map<Table, Table> mirror = new HashMap<>();
+    private Map<Table, Table> mirror;
 
     public Set<Table> getMemoizedTables() { return this.mirror.keySet(); }
 
-    private MemQueryContainer() {}
+    private MemQueryContainer() {
+        mirror = new HashMap<>();
+    }
 
     public MemQueryContainer(ContainerType containerType) {
         this.containerType = containerType;
+        mirror = new HashMap<>();
     }
 
     public static MemQueryContainer initWithInputTables(List<Table> input, ContainerType containerType) {

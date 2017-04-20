@@ -115,7 +115,7 @@ public class EnumAggrTableNode {
             for (AbsRenameNode rt : aggrNodes) {
                 // filters for aggregation fields are listed here
                 List<ValNode> vals = rt.getSchema().stream()
-                        .map(s -> new NamedVal(s))
+                        .map(NamedVal::new)
                         .collect(Collectors.toList());
                 AbsTableNode filtered = RenameTNWrapper.tryRename(new AbsSelectNode(vals, rt));
 

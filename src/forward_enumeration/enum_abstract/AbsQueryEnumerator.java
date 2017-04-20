@@ -4,6 +4,7 @@ import backward_inference.MappingInference;
 import com.microsoft.z3.Context;
 import com.microsoft.z3.Solver;
 import com.microsoft.z3.Status;
+import com.microsoft.z3.Tactic;
 import forward_enumeration.AbstractTableEnumerator;
 import forward_enumeration.container.QueryContainer;
 import forward_enumeration.container.SimpleQueryContainer;
@@ -19,7 +20,6 @@ import lang.sql.datatype.Value;
 import lang.sql.exception.SQLEvalException;
 import lang.table.Table;
 import lang.table.TableAttr;
-import sun.java2d.pipe.SpanShapeRenderer;
 import util.RenameTNWrapper;
 
 import java.util.*;
@@ -30,8 +30,15 @@ import java.util.stream.Collectors;
  */
 public class AbsQueryEnumerator extends AbstractTableEnumerator {
 
+    private int newValueCnt = 0;
+
     @Override
     public List<AbsTableNode> enumTable(EnumContext ec, int depth) {
+
+        Set<Value> newValues = MappingInference.inverseTable(ec.getOutputTable()).keySet();
+        for (Table in : ec.getInputs())
+            newValues.removeAll(MappingInference.inverseTable(in).keySet());
+        this.newValueCnt = newValues.size();
 
         QueryContainer qc = new SimpleQueryContainer();
         // qc memoizes these intermediate results, since the result pool is shared
@@ -65,29 +72,28 @@ public class AbsQueryEnumerator extends AbstractTableEnumerator {
         return qc;
     }
 
-    private static void tryCollect(QueryContainer qc, List<AbsTableNode> tns, EnumContext ec) {
+    private void tryCollect(QueryContainer qc, List<AbsTableNode> tns, EnumContext ec) {
         qc.collectQueries(tns.stream().map(tn -> new AbsProjNode(tn)).collect(Collectors.toList()), tn -> {
-            if (GlobalConfig.firstPhasePruningTech.equals("Constraint"))
-                return checkValidityWithProp(tn, ec.getOutputTable(), ec.getInputs());
-            else if (GlobalConfig.firstPhasePruningTech.equals("Approximation"))
-                return checkValidityWithApproximation(tn, ec.getOutputTable());
-            else return false;
+            if (GlobalConfig.firstPhasePruning == GlobalConfig.PruningApproach.constraint)
+                return this.checkValidityWithProp(tn, ec.getOutputTable(), ec.getInputs());
+            else if (GlobalConfig.firstPhasePruning == GlobalConfig.PruningApproach.approximation)
+                return this.checkValidityWithApproximation(tn, ec.getOutputTable());
+            else if (GlobalConfig.firstPhasePruning == GlobalConfig.PruningApproach.nothing)
+                return true;
+            else
+                return false;
         });
     }
 
-    private static boolean checkValidityWithProp(AbsTableNode atn, Table output, List<Table> inputTables) {
+    private boolean checkValidityWithProp(AbsTableNode atn, Table output, List<Table> inputTables) {
         Context ctx = new Context();
-        Solver solver = ctx.mkSolver();
+        Solver solver = ctx.mkSimpleSolver(); //ctx.mkSolver();
         Map<AbsTableNode, TableAttr> map = new HashMap<>();
         atn.genConstraints(ctx, solver, map);
 
-        Set<Value> newValues = MappingInference.inverseTable(output).keySet();
-        for (Table in : inputTables)
-            newValues.removeAll(MappingInference.inverseTable(in).keySet());
-
         solver.add(ctx.mkEq(map.get(atn).r, ctx.mkInt(output.getContent().size())));
         solver.add(ctx.mkEq(map.get(atn).c, ctx.mkInt(output.getSchema().size())));
-        solver.add(ctx.mkEq(map.get(atn).newVal, ctx.mkInt(newValues.size())));
+        solver.add(ctx.mkEq(map.get(atn).newVal, ctx.mkInt(this.newValueCnt)));
 
         if (solver.check() == Status.SATISFIABLE)
             return true;
@@ -95,7 +101,7 @@ public class AbsQueryEnumerator extends AbstractTableEnumerator {
             return false;
     }
 
-    private static boolean checkValidityWithApproximation(AbsTableNode atn, Table output) {
+    private boolean checkValidityWithApproximation(AbsTableNode atn, Table output) {
         try {
             MappingInference mi = MappingInference.buildMapping(atn.eval(new Environment()), output);
             if (! mi.everyCellHasImage())
@@ -105,12 +111,12 @@ public class AbsQueryEnumerator extends AbstractTableEnumerator {
         return false;
     }
 
-    public static QueryContainer enumJoinWithoutProj(EnumContext ec, QueryContainer qc, int depth) {
+    public QueryContainer enumJoinWithoutProj(EnumContext ec, QueryContainer qc, int depth) {
 
         //##### Synthesize SPJ query
         ec.setTableNodes(ec.getInputs().stream().map(t -> new AbsNamedTable(t)).collect(Collectors.toList()));
         List<AbsTableNode> basic = EnumSelect.enumFilterNamed(ec);
-        tryCollect(qc, basic, ec);
+        this.tryCollect(qc, basic, ec);
 
         System.out.println("[Stage 1] EnumFilterNamed: \n\t"
                 + "Total Table by now: " + qc.getCollectedQueries().size());
@@ -123,7 +129,7 @@ public class AbsQueryEnumerator extends AbstractTableEnumerator {
         //##### Synthesize AGGR
         ec.setTableNodes(basic);
         List<AbsTableNode> aggr = EnumAggrTableNode.enumAggrNodeWFilter(ec);
-        tryCollect(qc, aggr, ec);
+        this.tryCollect(qc, aggr, ec);
 
         List<AbsTableNode> basicAndAggr = new ArrayList<>();
         basicAndAggr.addAll(basic);
@@ -147,7 +153,7 @@ public class AbsQueryEnumerator extends AbstractTableEnumerator {
             // TODO: add some break point
 
             leftSet = EnumJoinTableNodes.enumJoinLeftRight(leftSet, basicAndAggr, ec);
-            tryCollect(qc, leftSet, ec);
+            this.tryCollect(qc, leftSet, ec);
 
             //System.out.println("after enumJoinWithFilter: " + qc.getRepresentativeTableNodes().size() + " tables");
             System.out.println("[Stage " + (2 + i) + "] EnumJoinOnAggrAndBasic" + i + " \n\t"
@@ -172,7 +178,7 @@ public class AbsQueryEnumerator extends AbstractTableEnumerator {
             // return;
 
             leftSet = EnumUnion.enumUnion(leftSet, basic);
-            tryCollect(qc, leftSet, ec);
+            this.tryCollect(qc, leftSet, ec);
 
             //System.out.println("after enumJoinWithFilter: " + qc.getRepresentativeTableNodes().size() + " tables");
             System.out.println("[Stage " + (2 + i) + "] EnumLeftJoin" + i + " \n\t"
@@ -217,7 +223,7 @@ public class AbsQueryEnumerator extends AbstractTableEnumerator {
             if (leftSet != basic) {
                 ec.setTableNodes(leftSet);
                 List<AbsTableNode> tmp = EnumAggrTableNode.enumAggrNodeWFilter(ec);
-                tryCollect(qc, tmp, ec);
+                this.tryCollect(qc, tmp, ec);
             }
 
             //##### Synthesize join with aggregation result
@@ -227,7 +233,7 @@ public class AbsQueryEnumerator extends AbstractTableEnumerator {
                 // TODO: add some break point
 
                 leftSet = EnumJoinTableNodes.enumJoinLeftRight(leftSet, basicAndAggr, ec);
-                tryCollect(qc, leftSet, ec);
+                this.tryCollect(qc, leftSet, ec);
 
                 //System.out.println("after enumJoinWithFilter: " + qc.getRepresentativeTableNodes().size() + " tables");
                 System.out.println("[Stage " + (2 + i) + "] EnumJoinTwoAggr" + i + " \n\t"
@@ -242,14 +248,14 @@ public class AbsQueryEnumerator extends AbstractTableEnumerator {
         ec.setTableNodes(aggr);
         List<AbsTableNode> aggrAfterAggr = EnumAggrTableNode.enumAggrNodeWFilter(ec);
         leftSet = aggrAfterAggr;
-        tryCollect(qc, leftSet, ec);
+        this.tryCollect(qc, leftSet, ec);
         for (int i = 1; i <= depth-1; i ++) {
             // check whether a result can be obtained by projection
             //if (EnumProjection.enumProjection(qc.getRepresentativeTableNodes(), ec.getOutputTable()).size() > 0)
             // return;
 
             leftSet = EnumJoinTableNodes.enumJoinLeftRight(leftSet, basic, ec);
-            tryCollect(qc, leftSet, ec);
+            this.tryCollect(qc, leftSet, ec);
             System.out.println("[Stage " + (2 + i) + "] EnumJoinOnAggrAggr" + i + " \n\t"
                     + "Total Table by now: " + qc.getCollectedQueries().size());
             if (qc instanceof MemQueryContainer) {

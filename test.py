@@ -7,8 +7,8 @@ from subprocess32 import check_output, PIPE, TimeoutExpired
 
 import re
 
-test_dir = "data/"
-dylib_location = "lib"
+test_dir = "data/" # path to test data directory
+dylib_location = "lib" # path to the dir containing libz3java.dylib libz3.dylib
 jar_path = "out/artifacts/EnumExperiment_jar/EnumExperiment.jar"
 
 
@@ -41,7 +41,7 @@ def run(target_file, pruning_strategy, max_depth, complex_query_depth):
     return [-1, -1, -1]
 
 if __name__ == '__main__':
-  if (sys.argv[1] != "-a" and sys.argv[1] != "-c"):
+  if (sys.argv[1] != "-a" and sys.argv[1] != "-c" and sys.argv[1] != "--noPruning"):
     print "Error: Pruning strategy not correctly provided"
   else:
     main(sys.argv[1], sys.argv[2], sys.argv[3])
